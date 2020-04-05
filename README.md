@@ -14,7 +14,7 @@ func main() {
   app := fiber.New()
   
   app.Use(redirect.New(redirect.Config{
-    Rules: map[string]string{
+    Rules: map[string]redirect.Rule{
       "/old":   redirect.Rule{RedirectTo: "google.com", StatusCode: 301},
       "/old/*": redirect.Rule{RedirectTo: "fiber.wiki", StatusCode: 307},
     },
