@@ -4,18 +4,29 @@
 
 package redirect
 
-import "github.com/gofiber/fiber"
+import (
+	"regexp"
+	"strings"
+
+	"github.com/gofiber/fiber"
+)
 
 // Config ...
 type Config struct {
-	Filter func(*fiber.Ctx) bool // Default: nil
-	Rules  map[string]Rule       // The key we should be URL that you wish redirect
+	// Filter defines a function to skip middleware.
+	// Optional. Default: nil
+	Filter func(*fiber.Ctx) bool
+	// Here you must set URL that you wishing to make the redirect with your rules.
+	Rules map[string]Rule
 }
 
 // Rule ...
 type Rule struct {
+	// if you don't set it will to get of header location or refer
 	RedirectTo string
-	StatusCode int // Default: 302
+	// Default: 302
+	StatusCode  int
+	hasWildcard bool
 }
 
 // New ...
@@ -24,10 +35,15 @@ func New(config ...Config) func(*fiber.Ctx) {
 	if len(config) > 0 {
 		cfg = config[0]
 	}
-	statusCode := 302
-	for _, v := range cfg.Rules {
-		if v.StatusCode != statusCode {
-			v.StatusCode = statusCode
+	for k, v := range cfg.Rules {
+		statusCode := 302
+		if v.StatusCode > 0 {
+			statusCode = v.StatusCode
+		}
+		cfg.Rules[k] = Rule{
+			RedirectTo:  v.RedirectTo,
+			StatusCode:  statusCode,
+			hasWildcard: strings.Contains(k, "*"),
 		}
 	}
 
@@ -38,18 +54,29 @@ func New(config ...Config) func(*fiber.Ctx) {
 		}
 		for k, v := range cfg.Rules {
 			if c.Path() == k {
-				if v.RedirectTo != "" {
-					c.Redirect(v.RedirectTo, v.StatusCode)
-					return
-				}
-				location := c.Get("Location")
-				if location != "" {
-					c.Redirect(location, v.StatusCode)
+				redirectTo(v, c)
+				return
+			} else if v.hasWildcard {
+				k = strings.Replace(k, "*", ".*", -1) + "$"
+				re := regexp.MustCompile(k)
+				if re.MatchString(c.Path()) {
+					redirectTo(v, c)
 					return
 				}
 			}
 		}
 		c.Next()
+		return
+	}
+}
+
+func redirectTo(rule Rule, c *fiber.Ctx) {
+	location := c.Get("Location")
+	if rule.RedirectTo != "" {
+		c.Redirect(rule.RedirectTo, rule.StatusCode)
+		return
+	} else if location != "" {
+		c.Redirect(location, rule.StatusCode)
 		return
 	}
 }
