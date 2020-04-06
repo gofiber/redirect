@@ -6,6 +6,7 @@ package redirect
 
 import (
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/gofiber/fiber"
@@ -16,67 +17,71 @@ type Config struct {
 	// Filter defines a function to skip middleware.
 	// Optional. Default: nil
 	Filter func(*fiber.Ctx) bool
-	// Here you must set URL that you wishing to make the redirect with your rules.
-	Rules map[string]Rule
-}
-
-// Rule ...
-type Rule struct {
-	// if you don't set it will to get of header location or refer
-	RedirectTo string
-	// Default: 302
-	StatusCode  int
-	hasWildcard bool
+	// Rules defines the URL path rewrite rules. The values captured in asterisk can be
+	// retrieved by index e.g. $1, $2 and so on.
+	// Required. Example:
+	// "/old":              "/new",
+	// "/api/*":            "/$1",
+	// "/js/*":             "/public/javascripts/$1",
+	// "/users/*/orders/*": "/user/$1/order/$2",
+	Rules map[string]string
+	// The status code when redirecting
+	// This is ignored if Redirect is disabled
+	// Optional. Default: 302 Temporary Redirect
+	StatusCode int
+	
+	rulesRegex map[*regexp.Regexp]string
 }
 
 // New ...
 func New(config ...Config) func(*fiber.Ctx) {
+	// Init config
 	var cfg Config
 	if len(config) > 0 {
 		cfg = config[0]
 	}
-	for k, v := range cfg.Rules {
-		statusCode := 302
-		if v.StatusCode > 0 {
-			statusCode = v.StatusCode
-		}
-		cfg.Rules[k] = Rule{
-			RedirectTo:  v.RedirectTo,
-			StatusCode:  statusCode,
-			hasWildcard: strings.Contains(k, "*"),
-		}
+	if cfg.StatusCode == 0 {
+		cfg.StatusCode = 302 // Temporary Redirect
 	}
-
+	cfg = config[0]
+	cfg.rulesRegex = map[*regexp.Regexp]string{}
+	// Initialize
+	for k, v := range cfg.Rules {
+		k = strings.Replace(k, "*", "(.*)", -1)
+		k = k + "$"
+		cfg.rulesRegex[regexp.MustCompile(k)] = v
+	}
+	// Middleware function
 	return func(c *fiber.Ctx) {
+		// Filter request to skip middleware
 		if cfg.Filter != nil && cfg.Filter(c) {
 			c.Next()
 			return
 		}
-		for k, v := range cfg.Rules {
-			if c.Path() == k {
-				redirectTo(v, c)
+		// Rewrite
+		for k, v := range cfg.rulesRegex {
+			replacer := captureTokens(k, c.Path())
+			if replacer != nil {
+				c.Redirect(replacer.Replace(v), cfg.StatusCode)
 				return
-			} else if v.hasWildcard {
-				k = strings.Replace(k, "*", ".*", -1) + "$"
-				re := regexp.MustCompile(k)
-				if re.MatchString(c.Path()) {
-					redirectTo(v, c)
-					return
-				}
 			}
 		}
 		c.Next()
-		return
 	}
 }
 
-func redirectTo(rule Rule, c *fiber.Ctx) {
-	location := c.Get("Location")
-	if rule.RedirectTo != "" {
-		c.Redirect(rule.RedirectTo, rule.StatusCode)
-		return
-	} else if location != "" {
-		c.Redirect(location, rule.StatusCode)
-		return
+// https://github.com/labstack/echo/blob/master/middleware/rewrite.go
+func captureTokens(pattern *regexp.Regexp, input string) *strings.Replacer {
+	groups := pattern.FindAllStringSubmatch(input, -1)
+	if groups == nil {
+		return nil
 	}
+	values := groups[0][1:]
+	replace := make([]string, 2*len(values))
+	for i, v := range values {
+		j := 2 * i
+		replace[j] = "$" + strconv.Itoa(i+1)
+		replace[j+1] = v
+	}
+	return strings.NewReplacer(replace...)
 }
