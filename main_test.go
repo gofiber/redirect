@@ -14,16 +14,30 @@ import (
 func Test_Redirect(t *testing.T) {
 	app := *fiber.New()
 
-	rules := map[string]Rule{
-		"/default":     Rule{RedirectTo: "google.com", StatusCode: 301},
-		"/default/*":   Rule{RedirectTo: "fiber.wiki", StatusCode: 307},
-		"/pattern":     Rule{RedirectTo: "", StatusCode: 303},
-		"/pattern/xyz": Rule{RedirectTo: "golang.org"},
-	}
-
-	app.Use(
-		New(Config{Rules: rules}),
-	)
+	app.Use(New(Config{
+		Rules: map[string]string{
+			"/default":     "google.com",
+		},
+		StatusCode: 302,
+	}))
+	app.Use(New(Config{
+		Rules: map[string]string{
+			"/default/*":    "fiber.wiki",
+		},
+		StatusCode: 307,
+	}))
+	app.Use(New(Config{
+		Rules: map[string]string{
+			"/pattern":     "$1",
+		},
+		StatusCode: 303,
+	}))
+	app.Use(New(Config{
+		Rules: map[string]string{
+			"/pattern/*":    "golang.org",
+		},
+		StatusCode: 302,
+	}))
 
 	app.Get("/new", func(c *fiber.Ctx) {
 		c.Send("Hello, World!")
