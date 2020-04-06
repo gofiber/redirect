@@ -36,7 +36,7 @@ func Test_Redirect(t *testing.T) {
 		statusCode int
 	}{
 		{
-			name:       "should be returns status 302 without wildcard",
+			name:       "should be returns status 302 without a wildcard",
 			url:        "/default",
 			redirectTo: "google.com",
 			statusCode: 301,
@@ -48,19 +48,19 @@ func Test_Redirect(t *testing.T) {
 			statusCode: 307,
 		},
 		{
-			name:       "should be returns status 303 without set redirectTo to use default",
+			name:       "should be returns status 303 without set redirectTo to use the default",
 			url:        "/pattern",
 			redirectTo: "github.com/gofiber/redirect",
 			statusCode: 303,
 		},
 		{
-			name:       "should be returns status code default",
+			name:       "should return the status code default",
 			url:        "/pattern/xyz",
 			redirectTo: "golang.org",
 			statusCode: 302,
 		},
 		{
-			name:       "access url without rule",
+			name:       "access URL without rule",
 			url:        "/new",
 			statusCode: 200,
 		},
