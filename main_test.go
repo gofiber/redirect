@@ -28,7 +28,7 @@ func Test_Redirect(t *testing.T) {
 	}))
 	app.Use(New(Config{
 		Rules: map[string]string{
-			"/pattern":     "$1",
+			"/redirect/*":     "$1",
 		},
 		StatusCode: 303,
 	}))
@@ -63,7 +63,7 @@ func Test_Redirect(t *testing.T) {
 		},
 		{
 			name:       "should be returns status 303 without set redirectTo to use the default",
-			url:        "/pattern",
+			url:        "/redirect/github.com/gofiber/redirect",
 			redirectTo: "github.com/gofiber/redirect",
 			statusCode: 303,
 		},
