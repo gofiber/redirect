@@ -18,7 +18,7 @@ func Test_Redirect(t *testing.T) {
 		Rules: map[string]string{
 			"/default":     "google.com",
 		},
-		StatusCode: 302,
+		StatusCode: 301,
 	}))
 	app.Use(New(Config{
 		Rules: map[string]string{
