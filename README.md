@@ -1,3 +1,9 @@
+# Redirect
+
+![Test](https://github.com/gofiber/redirect/workflows/Test/badge.svg)
+![Security](https://github.com/gofiber/redirect/workflows/Security/badge.svg)
+![Linter](https://github.com/gofiber/redirect/workflows/Linter/badge.svg)
+
 ### Install
 ```
 go get -u github.com/gofiber/fiber
