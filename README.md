@@ -8,16 +8,16 @@
 
 ### Install
 ```
-go get -u github.com/gofiber/fiber
-go get -u github.com/gofiber/redirect
+go get -u github.com/gofiber/fiber/v2
+go get -u github.com/gofiber/redirect/v2
 ```
 ### Example
 ```go
 package main
 
 import (
-  "github.com/gofiber/fiber"
-  "github.com/gofiber/redirect"
+  "github.com/gofiber/fiber/v2"
+  "github.com/gofiber/redirect/v2"
 )
 
 func main() {
@@ -31,14 +31,14 @@ func main() {
     StatusCode: 301,
   }))
   
-  app.Get("/new", func(c *fiber.Ctx) {
-    c.Send("Hello, World!")
+  app.Get("/new", func(c *fiber.Ctx) error {
+    return c.SendString("Hello, World!")
   })
-  app.Get("/new/*", func(c *fiber.Ctx) {
-    c.Send("Wildcard: ", c.Params("*"))
+  app.Get("/new/*", func(c *fiber.Ctx) error {
+    return c.SendString("Wildcard: " + c.Params("*"))
   })
   
-  app.Listen(3000)
+  app.Listen(":3000")
 }
 ```
 ### Test

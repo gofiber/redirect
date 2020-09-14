@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gofiber/fiber"
+	"github.com/gofiber/fiber/v2"
 )
 
 // Config ...
@@ -29,12 +29,12 @@ type Config struct {
 	// This is ignored if Redirect is disabled
 	// Optional. Default: 302 Temporary Redirect
 	StatusCode int
-	
+
 	rulesRegex map[*regexp.Regexp]string
 }
 
 // New ...
-func New(config ...Config) func(*fiber.Ctx) {
+func New(config ...Config) fiber.Handler {
 	// Init config
 	var cfg Config
 	if len(config) > 0 {
@@ -52,21 +52,19 @@ func New(config ...Config) func(*fiber.Ctx) {
 		cfg.rulesRegex[regexp.MustCompile(k)] = v
 	}
 	// Middleware function
-	return func(c *fiber.Ctx) {
+	return func(c *fiber.Ctx) error {
 		// Filter request to skip middleware
 		if cfg.Filter != nil && cfg.Filter(c) {
-			c.Next()
-			return
+			return c.Next()
 		}
 		// Rewrite
 		for k, v := range cfg.rulesRegex {
 			replacer := captureTokens(k, c.Path())
 			if replacer != nil {
-				c.Redirect(replacer.Replace(v), cfg.StatusCode)
-				return
+				return c.Redirect(replacer.Replace(v), cfg.StatusCode)
 			}
 		}
-		c.Next()
+		return c.Next()
 	}
 }
 
