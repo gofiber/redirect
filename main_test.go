@@ -39,6 +39,17 @@ func Test_Redirect(t *testing.T) {
 		StatusCode: 302,
 	}))
 
+	app.Use(New(Config{
+		Rules: map[string]string{
+			"/": "/swagger",
+		},
+		StatusCode: 301,
+	}))
+
+	app.Get("/api/*", func(c *fiber.Ctx) error {
+		return c.SendString("API")
+	})
+
 	app.Get("/new", func(c *fiber.Ctx) error {
 		return c.SendString("Hello, World!")
 	})
@@ -76,6 +87,22 @@ func Test_Redirect(t *testing.T) {
 		{
 			name:       "access URL without rule",
 			url:        "/new",
+			statusCode: 200,
+		},
+		{
+			name:       "redirect to swagger route",
+			url:        "/",
+			redirectTo: "/swagger",
+			statusCode: 301,
+		},
+		{
+			name:       "no redirect to swagger route",
+			url:        "/api/",
+			statusCode: 200,
+		},
+		{
+			name:       "no redirect to swagger route #2",
+			url:        "/api/test",
 			statusCode: 200,
 		},
 	}
