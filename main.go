@@ -37,20 +37,26 @@ type Config struct {
 func New(config ...Config) fiber.Handler {
 	// Init config
 	var cfg Config
+
 	if len(config) > 0 {
 		cfg = config[0]
+	} else {
+		cfg = Config{}
 	}
+
 	if cfg.StatusCode == 0 {
 		cfg.StatusCode = 302 // Temporary Redirect
 	}
-	cfg = config[0]
+
 	cfg.rulesRegex = map[*regexp.Regexp]string{}
+
 	// Initialize
 	for k, v := range cfg.Rules {
 		k = strings.Replace(k, "*", "(.*)", -1)
 		k = k + "$"
 		cfg.rulesRegex[regexp.MustCompile(k)] = v
 	}
+
 	// Middleware function
 	return func(c *fiber.Ctx) error {
 		// Filter request to skip middleware

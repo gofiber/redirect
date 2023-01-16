@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/utils"
 )
 
 func Test_Redirect(t *testing.T) {
@@ -18,32 +19,32 @@ func Test_Redirect(t *testing.T) {
 		Rules: map[string]string{
 			"/default": "google.com",
 		},
-		StatusCode: 301,
+		StatusCode: fiber.StatusMovedPermanently,
 	}))
 	app.Use(New(Config{
 		Rules: map[string]string{
 			"/default/*": "fiber.wiki",
 		},
-		StatusCode: 307,
+		StatusCode: fiber.StatusTemporaryRedirect,
 	}))
 	app.Use(New(Config{
 		Rules: map[string]string{
 			"/redirect/*": "$1",
 		},
-		StatusCode: 303,
+		StatusCode: fiber.StatusSeeOther,
 	}))
 	app.Use(New(Config{
 		Rules: map[string]string{
 			"/pattern/*": "golang.org",
 		},
-		StatusCode: 302,
+		StatusCode: fiber.StatusFound,
 	}))
 
 	app.Use(New(Config{
 		Rules: map[string]string{
 			"/": "/swagger",
 		},
-		StatusCode: 301,
+		StatusCode: fiber.StatusMovedPermanently,
 	}))
 
 	app.Get("/api/*", func(c *fiber.Ctx) error {
@@ -61,49 +62,49 @@ func Test_Redirect(t *testing.T) {
 		statusCode int
 	}{
 		{
-			name:       "should be returns status 302 without a wildcard",
+			name:       "should be returns status StatusFound without a wildcard",
 			url:        "/default",
 			redirectTo: "google.com",
-			statusCode: 301,
+			statusCode: fiber.StatusMovedPermanently,
 		},
 		{
-			name:       "should be returns status 307 using wildcard",
+			name:       "should be returns status StatusTemporaryRedirect  using wildcard",
 			url:        "/default/xyz",
 			redirectTo: "fiber.wiki",
-			statusCode: 307,
+			statusCode: fiber.StatusTemporaryRedirect,
 		},
 		{
-			name:       "should be returns status 303 without set redirectTo to use the default",
+			name:       "should be returns status StatusSeeOther without set redirectTo to use the default",
 			url:        "/redirect/github.com/gofiber/redirect",
 			redirectTo: "github.com/gofiber/redirect",
-			statusCode: 303,
+			statusCode: fiber.StatusSeeOther,
 		},
 		{
 			name:       "should return the status code default",
 			url:        "/pattern/xyz",
 			redirectTo: "golang.org",
-			statusCode: 302,
+			statusCode: fiber.StatusFound,
 		},
 		{
 			name:       "access URL without rule",
 			url:        "/new",
-			statusCode: 200,
+			statusCode: fiber.StatusOK,
 		},
 		{
 			name:       "redirect to swagger route",
 			url:        "/",
 			redirectTo: "/swagger",
-			statusCode: 301,
+			statusCode: fiber.StatusMovedPermanently,
 		},
 		{
 			name:       "no redirect to swagger route",
 			url:        "/api/",
-			statusCode: 200,
+			statusCode: fiber.StatusOK,
 		},
 		{
 			name:       "no redirect to swagger route #2",
 			url:        "/api/test",
-			statusCode: 200,
+			statusCode: fiber.StatusOK,
 		},
 	}
 	for _, tt := range tests {
@@ -111,16 +112,193 @@ func Test_Redirect(t *testing.T) {
 			req, _ := http.NewRequest("GET", tt.url, nil)
 			req.Header.Set("Location", "github.com/gofiber/redirect")
 			resp, err := app.Test(req)
+
 			if err != nil {
 				t.Fatalf(`%s: %s`, t.Name(), err)
 			}
-			if resp.StatusCode != tt.statusCode {
-				t.Fatalf(`%s: StatusCode: got %v - expected %v`, t.Name(), resp.StatusCode, tt.statusCode)
-			}
-			if resp.Header.Get("Location") != tt.redirectTo {
-				t.Fatalf(`%s: Expecting Location: %s`, t.Name(), tt.redirectTo)
-			}
+
+			utils.AssertEqual(t, tt.statusCode, resp.StatusCode)
+			utils.AssertEqual(t, tt.redirectTo, resp.Header.Get("Location"))
 		})
 	}
+}
 
+func Test_Filter(t *testing.T) {
+	//Case 1 : filter function always returns true
+	app := *fiber.New()
+	app.Use(New(Config{
+		Filter: func(*fiber.Ctx) bool {
+			return true
+		},
+		Rules: map[string]string{
+			"/default": "google.com",
+		},
+		StatusCode: fiber.StatusMovedPermanently,
+	}))
+
+	app.Use(func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusOK)
+	})
+
+	req, _ := http.NewRequest("GET", "/default", nil)
+	resp, err := app.Test(req)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	utils.AssertEqual(t, fiber.StatusOK, resp.StatusCode)
+
+	//Case 2 : filter function always returns false
+	app = *fiber.New()
+	app.Use(New(Config{
+		Filter: func(*fiber.Ctx) bool {
+			return false
+		},
+		Rules: map[string]string{
+			"/default": "google.com",
+		},
+		StatusCode: fiber.StatusMovedPermanently,
+	}))
+
+	req, _ = http.NewRequest("GET", "/default", nil)
+	resp, err = app.Test(req)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	utils.AssertEqual(t, fiber.StatusMovedPermanently, resp.StatusCode)
+	utils.AssertEqual(t, "google.com", resp.Header.Get("Location"))
+}
+
+func Test_NoRules(t *testing.T) {
+	// Case 1: No rules with default route defined
+	app := *fiber.New()
+
+	app.Use(New(Config{
+		StatusCode: fiber.StatusMovedPermanently,
+	}))
+
+	app.Use(func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusOK)
+	})
+
+	req, _ := http.NewRequest("GET", "/default", nil)
+	resp, err := app.Test(req)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	utils.AssertEqual(t, fiber.StatusOK, resp.StatusCode)
+
+	// Case 2: No rules and no default route defined
+	app = *fiber.New()
+
+	app.Use(New(Config{
+		StatusCode: fiber.StatusMovedPermanently,
+	}))
+
+	req, _ = http.NewRequest("GET", "/default", nil)
+	resp, err = app.Test(req)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	utils.AssertEqual(t, fiber.StatusNotFound, resp.StatusCode)
+}
+
+func Test_DefaultConfig(t *testing.T) {
+	// Case 1: Default config and no default route
+	app := *fiber.New()
+
+	app.Use(New())
+
+	req, _ := http.NewRequest("GET", "/default", nil)
+	resp, err := app.Test(req)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	utils.AssertEqual(t, fiber.StatusNotFound, resp.StatusCode)
+
+	// Case 2: Default config and default route
+	app = *fiber.New()
+
+	app.Use(New())
+	app.Use(func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusOK)
+	})
+
+	req, _ = http.NewRequest("GET", "/default", nil)
+	resp, err = app.Test(req)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	utils.AssertEqual(t, fiber.StatusOK, resp.StatusCode)
+}
+
+func Test_RegexRules(t *testing.T) {
+	// Case 1: Rules regex is empty
+	app := *fiber.New()
+	app.Use(New(Config{
+		Rules:      map[string]string{},
+		StatusCode: fiber.StatusMovedPermanently,
+	}))
+
+	app.Use(func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusOK)
+	})
+
+	req, _ := http.NewRequest("GET", "/default", nil)
+	resp, err := app.Test(req)
+
+	if err != nil {
+		t.Error(err)
+	}
+	utils.AssertEqual(t, fiber.StatusOK, resp.StatusCode)
+
+	// Case 2: Rules regex map contains valid regex and well-formed replacement URLs
+	app = *fiber.New()
+	app.Use(New(Config{
+		Rules: map[string]string{
+			"/default": "google.com",
+		},
+		StatusCode: fiber.StatusMovedPermanently,
+	}))
+
+	app.Use(func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusOK)
+	})
+
+	req, _ = http.NewRequest("GET", "/default", nil)
+	resp, err = app.Test(req)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	utils.AssertEqual(t, fiber.StatusMovedPermanently, resp.StatusCode)
+	utils.AssertEqual(t, "google.com", resp.Header.Get("Location"))
+
+	// Case 3: Test invalid regex throws panic
+	defer func() {
+		if r := recover(); r != nil {
+			t.Log("Recovered from invalid regex: ", r)
+		}
+	}()
+
+	app = *fiber.New()
+	app.Use(New(Config{
+		Rules: map[string]string{
+			"(": "google.com",
+		},
+		StatusCode: fiber.StatusMovedPermanently,
+	}))
+	t.Error("Expected panic, got nil")
 }
