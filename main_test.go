@@ -19,32 +19,32 @@ func Test_Redirect(t *testing.T) {
 		Rules: map[string]string{
 			"/default": "google.com",
 		},
-		StatusCode: StatusMovedPermanently,
+		StatusCode: fiber.StatusMovedPermanently,
 	}))
 	app.Use(New(Config{
 		Rules: map[string]string{
 			"/default/*": "fiber.wiki",
 		},
-		StatusCode: StatusTemporaryRedirect,
+		StatusCode: fiber.StatusTemporaryRedirect,
 	}))
 	app.Use(New(Config{
 		Rules: map[string]string{
 			"/redirect/*": "$1",
 		},
-		StatusCode: StatusSeeOther,
+		StatusCode: fiber.StatusSeeOther,
 	}))
 	app.Use(New(Config{
 		Rules: map[string]string{
 			"/pattern/*": "golang.org",
 		},
-		StatusCode: StatusFound,
+		StatusCode: fiber.StatusFound,
 	}))
 
 	app.Use(New(Config{
 		Rules: map[string]string{
 			"/": "/swagger",
 		},
-		StatusCode: StatusMovedPermanently,
+		StatusCode: fiber.StatusMovedPermanently,
 	}))
 
 	app.Get("/api/*", func(c *fiber.Ctx) error {
@@ -65,46 +65,46 @@ func Test_Redirect(t *testing.T) {
 			name:       "should be returns status StatusFound without a wildcard",
 			url:        "/default",
 			redirectTo: "google.com",
-			statusCode: StatusMovedPermanently,
+			statusCode: fiber.StatusMovedPermanently,
 		},
 		{
 			name:       "should be returns status StatusTemporaryRedirect  using wildcard",
 			url:        "/default/xyz",
 			redirectTo: "fiber.wiki",
-			statusCode: StatusTemporaryRedirect,
+			statusCode: fiber.StatusTemporaryRedirect,
 		},
 		{
 			name:       "should be returns status StatusSeeOther without set redirectTo to use the default",
 			url:        "/redirect/github.com/gofiber/redirect",
 			redirectTo: "github.com/gofiber/redirect",
-			statusCode: StatusSeeOther,
+			statusCode: fiber.StatusSeeOther,
 		},
 		{
 			name:       "should return the status code default",
 			url:        "/pattern/xyz",
 			redirectTo: "golang.org",
-			statusCode: StatusFound,
+			statusCode: fiber.StatusFound,
 		},
 		{
 			name:       "access URL without rule",
 			url:        "/new",
-			statusCode: StatusOK,
+			statusCode: fiber.StatusOK,
 		},
 		{
 			name:       "redirect to swagger route",
 			url:        "/",
 			redirectTo: "/swagger",
-			statusCode: StatusMovedPermanently,
+			statusCode: fiber.StatusMovedPermanently,
 		},
 		{
 			name:       "no redirect to swagger route",
 			url:        "/api/",
-			statusCode: StatusOK,
+			statusCode: fiber.StatusOK,
 		},
 		{
 			name:       "no redirect to swagger route #2",
 			url:        "/api/test",
-			statusCode: StatusOK,
+			statusCode: fiber.StatusOK,
 		},
 	}
 	for _, tt := range tests {
@@ -248,7 +248,7 @@ func Test_RegexRules(t *testing.T) {
 	app := *fiber.New()
 	app.Use(New(Config{
 		Rules:      map[string]string{},
-		StatusCode: StatusMovedPermanently,
+		StatusCode: fiber.StatusMovedPermanently,
 	}))
 
 	app.Use(func(c *fiber.Ctx) error {
@@ -269,7 +269,7 @@ func Test_RegexRules(t *testing.T) {
 		Rules: map[string]string{
 			"/default": "google.com",
 		},
-		StatusCode: StatusMovedPermanently,
+		StatusCode: fiber.StatusMovedPermanently,
 	}))
 
 	app.Use(func(c *fiber.Ctx) error {
@@ -298,7 +298,7 @@ func Test_RegexRules(t *testing.T) {
 		Rules: map[string]string{
 			"(": "google.com",
 		},
-		StatusCode: StatusMovedPermanently,
+		StatusCode: fiber.StatusMovedPermanently,
 	}))
 	t.Error("Expected panic, got nil")
 }
