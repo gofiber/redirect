@@ -1,3 +1,5 @@
+// Deprecated: Now part of the fiber core repo:
+// github.com/gofiber/fiber/v2/middleware/redirect
 module github.com/gofiber/redirect/v2
 
 go 1.17
